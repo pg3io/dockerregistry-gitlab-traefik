@@ -1,0 +1,38 @@
+version: "3.6"
+services:
+  front:
+    image: 'gitlab/gitlab-ce:latest'
+    environment:
+      GITLAB_OMNIBUS_CONFIG: |
+        external_url 'https://gitlab.example.com'
+        gitlab_rails['gitlab_shell_ssh_port'] = 2222
+        nginx['listen_port'] = 80
+        nginx['listen_https'] = false
+        nginx['proxy_set_headers'] = {
+                'X-Forwarded-Proto' => 'https',
+                'X-Forwarded-Ssl' => 'on',
+                'Host' => 'gitlab.example.com'
+                }
+        registry['enable'] = true
+        registry_external_url 'https://registry.example.com'
+        registry_nginx['listen_port'] = 80
+        registry_nginx['listen_https'] = false
+    networks:
+      - traefik
+    deploy:
+      labels:
+        - "traefik.enable=true"
+        - "traefik.git.frontend.rule=Host:gitlab.example.com"
+        - "traefik.git.port=80"
+        - "traefik.git.frontend.entryPoints=http,https"
+        - "traefik.registry.frontend.rule=Host:registry.example.com"
+        - "traefik.registry.port=80"
+        - "traefik.registry.frontend.entryPoints=http,https"
+        - "traefik.docker.network=traefik_default"
+    ports:
+      - '2222:22'
+
+networks:
+  traefik:
+    external: true
+    name: traefik_default
